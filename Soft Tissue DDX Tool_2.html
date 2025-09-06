@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Soft Tissue Tumour DDX Tool (Davide Marchese - Grey Nuns Presentation 2025)</title>
+<style>
+  body { font-family: Arial, sans-serif; margin: 20px; }
+  h1 { font-size: 24px; }
+  h2 { font-size: 20px; margin-top: 20px; }
+  h3 { font-size: 16px; margin-top: 15px; }
+  label { font-size: 12px; margin-right: 10px; }
+  .feature-category { margin-top: 15px; }
+  .feature-category h4 { margin: 0; font-size: 14px; }
+  .tumour-list { margin-top: 15px; }
+  .tumour-blue { color: blue; }
+  .tumour-green { color: green; }
+  .tumour-purple { color: purple; }
+  .sub-feature { display: inline-block; margin-right: 10px; font-size: 12px; }
+  .note { font-size: 12px; margin-top: 5px; }
+</style>
+</head>
+<body>
+<h1>Soft Tissue Tumour DDX Tool (Davide Marchese © - Grey Nuns Presentation 2025)</h1>
+<p class="note">Based on  
+  <a href="https://app.expertpath.com/treenode/clinical-approach/c9bbecc7-929c-4bbf-ab27-025751ae5dda" target="_blank">
+    ExpertPath:
+  </a>
+</p>
+
+<div>
+  <label for="age">Age (0-120):</label>
+  <input type="number" id="age" min="0" max="120" value="54">
+</div>
+<div>
+  <label for="location">Location:</label>
+  <select id="location">
+    <option value="any">Any Location</option>
+  </select>
+</div>
+
+<h3>Feature Selection</h3>
+<p class="note">Select features to highlight tumours that correspond to the selected features.</p>
+<div id="features"></div>
+
+<button onclick="filterTumours()">Show Tumours</button>
+
+<div class="note">
+  <p><strong>Legend:</strong> 
+    <span class="tumour-green">Green = matches location and age</span>; 
+    <span class="tumour-blue">Blue = matches location but has no age predilection according to ExpertPath</span>; 
+    <span class="tumour-purple">Purple = matches age but has no location predilection according to ExpertPath</span>  
+  </p>
+</div>
+
+<div id="output" class="tumour-list"></div>
+
+<script>
+// -------------------- SAMPLE DATA --------------------
+// Replace this array with your full JSON
+const tumours = [
+  {
+    "location": "Abdominal Cavity or Pelvis (Including Mesentery/Omentum)",
+    "name": "Dedifferentiated liposarcoma",
+    "ageRanges": [[40,65]],
+    "features": ["Rhabdomyoblastic Elements", "Prominent Mixed Inflammation", "Prominent Neutrophils (rare)"]
+  },
+  {
+    "location": "Abdominal Cavity or Pelvis (Including Mesentery/Omentum)", 
+    "name": "Desmoid fibromatosis",
+    "ageRanges": [[10,35],[20,50]],
+    "features": ["Entrapped Atrophic Skeletal Muscle Fibers", "Keloidal-Like Collagen"]
+  },
+{
+    "location": "Trunk (Including Abdominal Wall and Back)",
+    "name": "Desmoid fibromatosis",
+    "ageRanges": [[10,35],[20,50]],
+    "features": ["Entrapped Atrophic Skeletal Muscle Fibers", "Keloidal-Like Collagen"]
+  },
+  {
+    "location": "Abdominal Cavity or Pelvis (Including Mesentery/Omentum)",
+    "name": "Desmoplastic small round cell tumor",
+    "ageRanges": [[10,35]],
+    "features": ["Clear Cells", "Rhabdoid Cells (rare)"]
+  },
+  {
+    "location": "Abdominal Cavity or Pelvis (Including Mesentery/Omentum)",
+    "name": "Epithelioid inflammatory myofibroblastic sarcoma",
+    "ageRanges": [[], []],
+    "features": ["Prominent Neutrophils"]
+  },
+  {
+    "location": "Abdominal Cavity or Pelvis (Including Mesentery/Omentum)",
+    "name": "GIST",
+    "ageRanges": [[], []],
+    "features": ["Perivascular Hyalinization"]
+  },
+  {
+    "location": "Abdominal Cavity or Pelvis (Including Mesentery/Omentum)",
+    "name": "Inflammatory myofibroblastic tumor",
+    "ageRanges": [[10,35],[20,50]],
+    "features": ["Prominent Eosinophils", "Prominent Lymphocytes", "Prominent Mixed Inflammation", "Prominent Plasma Cells", "Prominent Nucleoli", "Smudgy Nuclei"]
+  },
+  {
+    "location": "Abdominal Cavity or Pelvis (Including Mesentery/Omentum)",
+    "name": "Smooth muscle tumor (leiomyoma or leiomyosarcoma)",
+    "ageRanges": [[], []],
+    "features": ["Paranuclear Vacuoles", "Calcification"]
+  },
+  {
+    "location": "Abdominal Cavity or Pelvis (Including Mesentery/Omentum)",
+    "name": "Solitary fibrous tumor",
+    "ageRanges": [[20,50],[40,65]],
+    "features": ["Prominent Mast Cells", "Keloidal-Like Collagen", "Perivascular Hyalinization", "Ectatic Staghorn Vasculature"]
+  },
+  {
+    "location": "Abdominal Cavity or Pelvis (Including Mesentery/Omentum)",
+    "name": "Well-differentiated liposarcoma",
+    "ageRanges": [[40,65]],
+    "features": ["Brown Fat Cells", "Vacuolated Cells (Nonlipoblast)", "Prominent Mixed Inflammation", "Plexiform Capillary Vasculature"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Acral fibromyxoma (often subungual)",
+    "ageRanges": [[], []],
+    "features": ["Prominent Mast Cells"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Calcifying aponeurotic fibroma",
+    "ageRanges": [[0,20]],
+    "features": ["Various Multinucleated Giant Cells", "Calcification"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Clear cell sarcoma",
+    "ageRanges": [[20,50]],
+    "features": ["Clear Cells", "Various Multinucleated Giant Cells", "Prominent Nucleoli"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Composite hemangioendothelioma",
+    "ageRanges": [[], []],
+    "features": ["Hobnail Cells"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Dermal nerve sheath myxoma",
+    "ageRanges": [[], []],
+    "features": []
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Epithelioid hemangioma",
+    "ageRanges": [[20,50]],
+    "features": ["Hobnail Cells", "Vacuolated Cells (Nonlipoblast)", "Paranuclear Vacuoles", "Prominent Eosinophils", "Prominent Lymphocytes (peripheral cuff)"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Epithelioid sarcoma (classic type)",
+    "ageRanges": [[10,35]],
+    "features": ["Rhabdoid Cells", "Prominent Nucleoli"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "EWSR1::SMAD3 fibroblastic tumor",
+    "ageRanges": [[], []],
+    "features": ["Calcification", "Stromal Microcystic Spaces"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Fibroma of tendon sheath",
+    "ageRanges": [[20,50]],
+    "features": ["Cleft-Like Spaces"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Fibromatosis (palmar/plantar)",
+    "ageRanges": [[20,50]],
+    "features": []
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Glomus tumor (often subungual)",
+    "ageRanges": [[], []],
+    "features": ["Ectatic Staghorn Vasculature", "Perivascular Hyalinization"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Hemosiderotic fibrolipomatous tumor (foot/ankle)",
+    "ageRanges": [[40,65]],
+    "features": ["Various Multinucleated Giant Cells", "Pigment (Various)"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Inclusion body fibromatosis",
+    "ageRanges": [[0,3]],
+    "features": []
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Lipofibromatosis",
+    "ageRanges": [[0,3],[0,20]],
+    "features": []
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Myopericytoma",
+    "ageRanges": [[], []],
+    "features": ["Ectatic Staghorn Vasculature", "Perivascular Cellularity"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Myxoinflammatory fibroblastic sarcoma",
+    "ageRanges": [[20,50]],
+    "features": ["Vacuolated Cells (Nonlipoblast)", "Prominent Eosinophils", "Prominent Mixed Inflammation", "Prominent Neutrophils", "Prominent Nucleoli", "Smudgy Nuclei", "Various Multinucleated Giant Cells", "Pigment (Various)"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Perineurioma (sclerosing variant)",
+    "ageRanges": [[], []],
+    "features": []
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Pleomorphic hyalinizing angiectatic tumor (ankle/foot)",
+    "ageRanges": [[], []],
+    "features": ["Prominent Mast Cells", "Pseudoinclusions", "Smudgy Nuclei", "Pigment (Various)", "Perivascular Hyalinization"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Soft tissue chondroma",
+    "ageRanges": [[20,50]],
+    "features": ["Various Multinucleated Giant Cells", "Grooves"]
+  },
+  {
+    "location": "Distal Extremities (Including Acral Sites)",
+    "name": "Tenosynovial giant cell tumor, localized type",
+    "ageRanges": [[20,50]],
+    "features": ["Various Multinucleated Giant Cells", "Grooves", "Cleft-Like Spaces", "Pigment (Various)"]
+  },
+  {
+    "location": "Genital Region and Groin",
+    "name": "Angiomyofibroblastoma",
+    "ageRanges": [[20,50]],
+    "features": []
+  },
+  {
+    "location": "Genital Region and Groin",
+    "name": "Cellular angiofibroma",
+    "ageRanges": [[40,65]],
+    "features": ["Prominent Mast Cells", "Perivascular Hyalinization", "Ectatic Staghorn Vasculature"]
+  },
+  {
+    "location": "Genital Region and Groin",
+    "name": "Deep (aggressive) angiomyxoma",
+    "ageRanges": [[], []],
+    "features": []
+  },
+  {
+    "location": "Genital Region and Groin",
+    "name": "Fibroepithelial stromal polyp",
+    "ageRanges": [[], []],
+    "features": []
+  },
+  {
+    "location": "Genital Region and Groin",
+    "name": "Genital rhabdomyoma",
+    "ageRanges": [[], []],
+    "features": []
+  },
+  {
+    "location": "Genital Region and Groin",
+    "name": "Intranodal palisaded myofibroblastoma",
+    "ageRanges": [[], []],
+    "features": ["Paranuclear Vacuoles", "Extravasated Red Blood Cells", "Nodular Eosinophilic Structures"]
+  },
+  {
+    "location": "Genital Region and Groin",
+    "name": "Lipoblastoma-like tumor of vulva",
+    "ageRanges": [[], []],
+    "features": ["Plexiform Capillary Vasculature"]
+  },
+  {
+    "location": "Genital Region and Groin",
+    "name": "Mammary-type myofibroblastoma",
+    "ageRanges": [[40,65]],
+    "features": ["Prominent Mast Cells", "Discrete Collagen Bundles or Fibers"]
+  },
+  {
+    "location": "Genital Region and Groin",
+    "name": "Spindle cell/sclerosing rhabdomyosarcoma (paratesticular)",
+    "ageRanges": [[0,20],[20,50]],
+    "features": ["Cleft-Like Spaces"]
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Alveolar soft part sarcoma (infants and children)",
+    "ageRanges": [[10,35]],
+    "features": ["Clear Cells (rare)", "Granular Cells", "Prominent Nucleoli"]
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Atypical fibromyxoma",
+    "ageRanges": [[], []],
+    "features": []
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Cellular neurothekeoma",
+    "ageRanges": [[], []],
+    "features": []
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Granular cell tumor",
+    "ageRanges": [[20,50]],
+    "features": ["Granular Cells"]
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Ectopic meningioma",
+    "ageRanges": [[], []],
+    "features": ["Pseudoinclusions"]
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Embryonal rhabdomyosarcoma",
+    "ageRanges": [[0,20]],
+    "features": []
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Epithelioid hemangioma",
+    "ageRanges": [[20,50]],
+    "features": ["Hobnail Cells", "Vacuolated Cells (Nonlipoblast)", "Prominent Eosinophils", "Prominent Lymphocytes (peripheral cuff)"]
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Extrarenal rhabdoid tumor",
+    "ageRanges": [[0,20]],
+    "features": ["Rhabdoid Cells", "Prominent Nucleoli"]
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Nuchal-type fibroma",
+    "ageRanges": [[], []],
+    "features": ["Discrete Collagen Bundles or Fibers"]
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Low-grade myofibroblastic sarcoma",
+    "ageRanges": [[20,50]],
+    "features": []
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Paraganglioma",
+    "ageRanges": [[], []],
+    "features": ["Pseudoinclusions", "Pigment (Various)", "Ectatic Staghorn Vasculature"]
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Rhabdomyoma (adult and fetal types)",
+    "ageRanges": [[], []],
+    "features": ["Granular Cells (adult)", "Spider Cells (adult, cardiac)"]
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Solitary circumscribed neuroma",
+    "ageRanges": [[], []],
+    "features": ["Cleft-Like Spaces"]
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Spindle cell/pleomorphic lipoma",
+    "ageRanges": [[40,65]],
+    "features": ["Floret-Like Tumor Cells", "Grooves", "Discrete Collagen Bundles or Fibers"]
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Spindle cell/sclerosing rhabdomyosarcoma",
+    "ageRanges": [[0,20],[20,50]],
+    "features": ["Cleft-Like Spaces"]
+  },
+  {
+    "location": "Mediastinum",
+    "name": "Ganglioneuroma",
+    "ageRanges": [[], []],
+    "features": []
+  },
+  {
+    "location": "Mediastinum",
+    "name": "Malignant peripheral nerve sheath tumor",
+    "ageRanges": [[], []],
+    "features": ["Rhabdoid Cells", "True Epithelial Elements (rare)", "Perivascular Cellularity", "Perivascular Tumor Cell Viability"]
+  },
+  {
+    "location": "Mediastinum",
+    "name": "Neurofibroma",
+    "ageRanges": [[], []],
+    "features": ["Discrete Collagen Bundles or Fibers", "Pigment (rare)"]
+  },
+  {
+    "location": "Mediastinum",
+    "name": "Pleomorphic myxoid liposarcoma",
+    "ageRanges": [[], []],
+    "features": ["Stromal Microcystic Spaces"]
+  },
+  {
+    "location": "Mediastinum",
+    "name": "Schwannoma",
+    "ageRanges": [[], []],
+    "features": ["Prominent Foamy Histiocytes", "Pigment (Various)", "Perivascular Hyalinization"]
+  }, 
+  {
+    "location": "Retroperitoneum",
+    "name": "Angiomyolipoma (PEComa family)",
+    "ageRanges": [[20,50],[40,65]],
+    "features": ["Clear Cells", "Spindled Cells", "Thick-Walled Blood Vessels", "Adipocytic Component", "Granular Cells", "Spider Cells"]
+  },
+  {
+    "location": "Retroperitoneum",
+    "name": "Dedifferentiated liposarcoma",
+    "ageRanges": [[40,65]],
+    "features": ["Spindled Cells", "Adipocytic Component", "Necrosis", "Prominent Lymphocytes"]
+  },
+  {
+    "location": "Retroperitoneum",
+    "name": "Leiomyosarcoma",
+    "ageRanges": [[20,50], [40,65]],
+    "features": ["Eosinophilic Spindle Cells", "Cigar-Shaped Nuclei", "Necrosis", "Ectatic Staghorn Vasculature"]
+  },
+  {
+    "location": "",
+    "name": "Atypical lipomatous tumor / Liposarcoma well-differentiated",
+    "ageRanges": [[40,65]],
+    "features": ["Adipocytic Component", "Hyperchromatic Stromal Cells", "Smudgy Nuclei", "Floret-Like Tumor Cells"]
+  },
+  {
+    "location": "Head and Neck",
+    "name": "Paraganglioma",
+    "ageRanges": [[], []],
+    "features": ["Eosinophilic Cells", "Rich Vascular Network", "Sustentacular Cells"]
+  },
+  {
+    "location": "Retroperitoneum",
+    "name": "Solitary fibrous tumor",
+    "ageRanges": [[40,65]],
+    "features": ["Collagen Bands", "Hemangiopericytoma-Like Vessels"]
+  },
+  {
+    "location": "Retroperitoneum",
+    "name": "Undifferentiated pleomorphic sarcoma",
+    "ageRanges": [[50,120]],
+    "features": ["Pleomorphic Spindle Cells", "Various Multinucleated Giant Cells", "Necrosis"]
+  },
+  {
+    "location": "Trunk (Including Abdominal Wall and Back)",
+    "name": "Dermatofibrosarcoma protuberans (DFSP)",
+    "ageRanges": [[20,50]],
+    "features": ["Spindled Cells", "Storiform Pattern", "Pigment (Various)"]
+  },
+  {
+    "location": "",
+    "name": "Epithelioid hemangioendothelioma",
+    "ageRanges": [[20,50],[40,65]],
+    "features": ["Epithelioid Cells", "Intracytoplasmic Lumina", "Paranuclear Vacuoles", "Myxohyaline Stroma", "Vacuolated Cells (Nonlipoblast)"]
+  },
+  {
+    "location": "Trunk (Including Abdominal Wall and Back)",
+    "name": "Epithelioid sarcoma (proximal type)",
+    "ageRanges": [[20,50]],
+    "features": ["Epithelioid Cells", "Rhabdoid Cells", "Necrosis", "Prominent Lymphocytes"]
+  },
+  {
+    "location": "Trunk (Including Abdominal Wall and Back)",
+    "name": "Elastofibroma",
+    "ageRanges": [[], []],
+    "features": []
+  },
+  {
+    "location": "Trunk (Including Abdominal Wall and Back)",
+    "name": "EWSR1::PATZ1 sarcoma",
+    "ageRanges": [[], []],
+    "features": ["", "Stromal Microcystic Spaces"]
+  },
+  {
+    "location": "Trunk (Including Abdominal Wall and Back)",
+    "name": "Gardner fibroma",
+    "ageRanges": [[], []],
+    "features": ["Discrete Collagen Bundles or Fibers", ""]
+  },
+  {
+    "location": "Trunk (Including Abdominal Wall and Back)",
+    "name": "Giant cell fibroblastoma",
+    "ageRanges": [[], []],
+    "features": ["Cleft-Like Spaces", "Floret-Like Tumor Cells"]
+  },
+  {
+    "location": "Trunk (Including Abdominal Wall and Back)",
+    "name": "Lipoblastoma",
+    "ageRanges": [[], [0, 20]],
+    "features": ["Brown Fat Cells", "Stromal Microcystic Spaces", "Plexiform Capillary Vasculature"]
+  },
+  {
+    "location": "Trunk (Including Abdominal Wall and Back)",
+    "name": "Proliferative myositis",
+    "ageRanges": [[], []],
+    "features": []
+  },
+  {
+    "location": "Trunk (Including Abdominal Wall and Back)",
+    "name": "Spindle cell/pleomorphic lipoma",
+    "ageRanges": [[], []],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Myxofibrosarcoma",
+    "ageRanges": [[50,120]],
+    "features": ["Spindled Cells", "Curvilinear Vessels", "Myxoid Stroma", "Scattered Lymphocytes", "Perivascular Cellularity", "Vacuolated Cells (Nonlipoblast)", "Floret-Like Tumor Cells"]
+  },
+  {
+    "location": "",
+    "name": "Fibrous hamartoma of infancy",
+    "ageRanges": [[0,3]],
+    "features": ["Cleft-Like Spaces", ""]
+  },
+  {
+    "location": "",
+    "name": "Infantile fibrosarcoma",
+    "ageRanges": [[0,3]],
+    "features": ["", "Ectatic Staghorn Vasculature"]
+  },
+  {
+    "location": "",
+    "name": "Lipoblastoma",
+    "ageRanges": [[0,3]],
+    "features": ["Brown Fat Cells", "Stromal Microcystic Spaces", "Plexiform Capillary Vasculature"]
+  },  {
+    "location": "",
+    "name": "Myofibroma",
+    "ageRanges": [[0,3]],
+    "features":[]
+  },
+  {
+    "location": "",
+    "name": "Angiomatosis",
+    "ageRanges": [[0,20]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Dabska tumour (infants)",
+    "ageRanges": [[0,3]],
+    "features": ["", "Hobnail Cells"]
+  }, 
+ {
+    "location": "",
+    "name": "BCOR::CCNB3 fusion-positive sarcoma",
+    "ageRanges": [[0,20], [10, 35]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Papillary intralymphatic angioendothioma / Dabska Tumour",
+    "ageRanges": [[0,20]],
+    "features": ["", "Hobnail Cells"]
+  },
+  {
+    "location": "",
+    "name": "Gardner fibroma",
+    "ageRanges": [[0,20]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Giant cell fibroma",
+    "ageRanges": [[0,20]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Kaposiform hemangioendothelioma",
+    "ageRanges": [[0,20]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Plexiform myofibroblastoma",
+    "ageRanges": [[0,20]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "NTRK-rearranged spindle neoplasms",
+    "ageRanges": [[0,20]],
+    "features": ["Discrete Collagen Bundles or Fibers", "Keloidal-Like Collagen", "Ectatic Staghorn Vasculature", "Pigment (Various)"]
+  },
+  {
+    "location": "",
+    "name": "Alveolar rhabdomyosarcoma",
+    "ageRanges": [[10,35]],
+    "features": ["", "Various Multinucleated Giant Cells"]
+  },
+  {
+    "location": "",
+    "name": "Alveolar soft part sarcoma",
+    "ageRanges": [[10,35]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Angiomyolipoma",
+    "ageRanges": [[10,35]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "EWSR1::NFATC2 sarcoma",
+    "ageRanges": [[10,35], [20,50]],
+    "features": ["", "Stromal Microcystic Spaces"]
+  },
+  {
+    "location": "",
+    "name": "Low grade fibromyxoid sarcoma",
+    "ageRanges": [[10,35]],
+  "features": ["Curvilinear Vessels", "Nodular Eosinophilic Structures", "Perivascular Cellularity"]
+  },
+  {
+    "location": "",
+    "name": "Myxoid liposarcoma",
+    "ageRanges": [[10,35],[20,50]],
+    "features": ["Brown Fat Cells", "Stromal Microcystic Spaces", "Plexiform Capillary Vasculature"]
+  },
+  {
+    "location": "",
+    "name": "Myxoid pleomorphic liposarcoma",
+    "ageRanges": [[10,35]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Plexiform myofibroblastoma",
+    "ageRanges": [[10,35]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Plexiform fibrohistiocytic tumor",
+    "ageRanges": [[10,35]],
+    "features": ["", "Various Multinucleated Giant Cells"]
+  },
+  {
+    "location": "",
+    "name": "CIC-rearranged sarcoma",
+    "ageRanges": [[20, 50]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "DFSP",
+    "ageRanges": [[20, 50]],
+    "features": ["", "Pigment (Various)"]
+  },
+  {
+    "location": "",
+    "name": "Hibernoma",
+    "ageRanges": [[20, 50]],
+    "features": ["Brown Fat Cells", "Granular Cells", "Vacuolated Cells (Nonlipoblast)"]
+  },
+  {
+    "location": "",
+    "name": "Inflammatory rhabdomyoblastic tumor",
+    "ageRanges": [[20, 50]],
+    "features": ["Prominent Foamy Histiocytes", "Rhabdoid Cells", "Pseudoinclusions", "Various Multinucleated Giant Cells"]
+  },
+  {
+    "location": "",
+    "name": "Myositis ossificans",
+    "ageRanges": [[20, 50]],
+    "features": ["", "Peripheral Bone Formation"]
+  },
+  {
+    "location": "",
+    "name": "Nodular fasciitis",
+    "ageRanges": [[20, 50]],
+    "features": ["Various Multinucleated Giant Cells", "Stromal Microcystic Spaces", "Prominent Lymphocytes"]
+  },
+  {
+    "location": "",
+    "name": "Pseudomyogenic hemangioendothelioma",
+    "ageRanges": [[20, 50]],
+    "features": ["", "Rhabdoid Cells"]
+  },
+  {
+    "location": "",
+    "name": "Synovial sarcoma",
+    "ageRanges": [[20, 50]],
+    "features": ["Rhabdoid Cells", "Ectatic Staghorn Vasculature", "Calcification", "Prominent Mast Cells"]
+  },
+  {
+    "location": "",
+    "name": "Sclerosing epithelioid fibrosarcoma",
+    "ageRanges": [[20, 50]],
+    "features": ["", "Clear Cells"]
+  },
+  {
+    "location": "",
+    "name": "CD34+ fibroblastic tumor",
+    "ageRanges": [[20, 50]],
+    "features": ["Prominent Mixed Inflammation", "Granular Cells", "Pseudoinclusions", "Prominent Nucleoli"]
+  },
+  {
+    "location": "",
+    "name": "Tenosynovial giant cell tumour, (both types)",
+    "ageRanges": [[20, 50]],
+    "features": ["", "Prominent Foamy Histiocytes"]
+  },
+  {
+    "location": "",
+    "name": "Desmoplastic fibroblastoma",
+    "ageRanges": [[40, 65]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Extraskeletal myxoid chondrosarcoma",
+    "ageRanges": [[40, 65]],
+    "features": ["", "Rhabdoid Cells"]
+  },
+  {
+    "location": "",
+    "name": "Extraskeletal osteosarcoma",
+    "ageRanges": [[40, 65]],
+    "features": ["", "Various Multinucleated Giant Cells"]
+  },
+  {
+    "location": "",
+    "name": "Intramuscular myxoma",
+    "ageRanges": [[40, 65]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Ossifying fibromyxoid tumour",
+    "ageRanges": [[40, 65]],
+    "features": ["Peripheral Bone Formation", "Clear Cells", "Pseudoinclusions"]
+  },
+  {
+    "location": "",
+    "name": "Proliferative fasciitis / myositis",
+    "ageRanges": [[40, 65]],
+    "features": ["", "Prominent Nucleoli"]
+  },
+  {
+    "location": "",
+    "name": "Sclerosing epithelioid fibrosarcoma",
+    "ageRanges": [[40, 65]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Spindle cell / Pleomorphic lipoma",
+    "ageRanges": [[40, 65]],
+    "features": ["", "Prominent Mast Cells"]
+  },
+  {
+    "location": "",
+    "name": "Atypical fibroxanthoma",
+    "ageRanges": [[50, 120]],
+    "features": ["", "Prominent Foamy Histiocytes"]
+  },
+  {
+    "location": "",
+    "name": "Elastofibroma",
+    "ageRanges": [[50, 120]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Ischemic fasciitis",
+    "ageRanges": [[50, 120]],
+    "features": ["", "Smudgy Nuclei"]
+  },
+  {
+    "location": "",
+    "name": "Pleomorphic liposarcoma",
+    "ageRanges": [[50, 120]],
+    "features": []
+  },
+  {
+    "location": "",
+    "name": "Pleomorphic Rhabdomyosarcoma",
+    "ageRanges": [[50, 120]],
+    "features": []
+  }
+]; 
+
+// -------------------- POPULATE LOCATIONS --------------------
+const locationSelect = document.getElementById("location");
+function populateLocations() {
+  const locations = [...new Set(tumours.map(t => t.location).filter(l => l && l !== "" && l !== "Any Location"))].sort();
+  locations.forEach(loc => {
+    const option = document.createElement("option");
+    option.value = loc;
+    option.textContent = loc;
+    locationSelect.appendChild(option);
+  });
+}
+
+// -------------------- FEATURE CATEGORIES --------------------
+const featureCategories = {
+  "Cytologic Features": ["Brown Fat Cells","Clear Cells","Granular Cells","Hobnail Cells","Rhabdoid Cells","Rhabdomyoblastic Elements","Paranuclear Vacuoles","Spider Cells","Vacuolated Cells (Nonlipoblast)"],
+  "Inflammatory Component": ["Prominent Eosinophils","Prominent Foamy Histiocytes","Prominent Lymphocytes","Prominent Mast Cells","Prominent Mixed Inflammation","Prominent Neutrophils","Prominent Plasma Cells"],
+  "Multinucleated Cells": ["Entrapped Atrophic Skeletal Muscle Fibers","Floret-Like Tumor Cells","Various Multinucleated Giant Cells"],
+  "Nuclear Features": ["Grooves","Prominent Nucleoli","Pseudoinclusions","Smudgy Nuclei"],
+  "Stromal Findings": ["Blood-Filled Spaces","Calcification","Cleft-Like Spaces","Discrete Collagen Bundles or Fibers","Extravasated Red Blood Cells","Keloidal-Like Collagen","Peripheral Bone Formation","Pigment (Various)","Stromal Microcystic Spaces"],
+  "Structures": ["Nodular Eosinophilic Structures","True Epithelial Elements"],
+  "Vasculature": ["Curvilinear Vessels","Ectatic Staghorn Vasculature","Perivascular Cellularity","Perivascular Hyalinization","Perivascular Tumor Cell Viability","Plexiform Capillary Vasculature"]
+};
+
+// -------------------- POPULATE FEATURES --------------------
+const featuresDiv = document.getElementById("features");
+function populateFeatures() {
+  for (const category in featureCategories) {
+    const div = document.createElement("div");
+    div.className = "feature-category";
+    const h4 = document.createElement("h4");
+    h4.textContent = category;
+    div.appendChild(h4);
+    featureCategories[category].forEach(f => {
+      const label = document.createElement("label");
+      label.className = "sub-feature";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = f;
+      label.appendChild(checkbox);
+      label.appendChild(document.createTextNode(f));
+      div.appendChild(label);
+    });
+    featuresDiv.appendChild(div);
+  }
+}
+
+// -------------------- FILTER TUMOURS --------------------
+function filterTumours() {
+  const age = parseInt(document.getElementById("age").value);
+  const location = document.getElementById("location").value;
+  const checkedFeatures = Array.from(document.querySelectorAll('#features input:checked')).map(cb => cb.value);
+
+  const outputDiv = document.getElementById("output");
+  outputDiv.innerHTML = "";
+
+  // Buckets for sorting by colour
+  const greenTumours = [];
+  const blueTumours = [];
+  const purpleTumours = [];
+
+  tumours.forEach(t => {
+    // Age check
+    let ageMatch = false;
+    let hasAgeData = t.ageRanges && t.ageRanges.some(r => r.length > 0);
+    if (hasAgeData) {
+      t.ageRanges.forEach(range => {
+        if (range.length === 2 && age >= range[0] && age <= range[1]) {
+          ageMatch = true;
+        }
+      });
+    }
+
+    // Location check
+    let locationMatch = false;
+    let hasLocationData = t.location && t.location !== "" && t.location !== "Any Location";
+    if (!hasLocationData) {
+      locationMatch = null; // no location metadata
+    } else if (location === "any" || t.location === location) {
+      locationMatch = true;
+    } else {
+      return; // mismatch
+    }
+
+    // Color classification
+    let colorClass = "";
+    if (ageMatch && locationMatch) {
+      colorClass = "tumour-green";
+    } else if (ageMatch && locationMatch === null) {
+      colorClass = "tumour-purple";
+    } else if (!ageMatch && locationMatch) {
+      colorClass = "tumour-blue";
+    } else {
+      return; // skip
+    }
+
+    // Features
+    const featureMatches = t.features.filter(f => checkedFeatures.includes(f));
+
+    // Build DOM node
+    const p = document.createElement("p");
+    p.textContent = t.name;
+    p.className = colorClass;
+    if (featureMatches.length > 0) {
+      p.textContent += ` (${featureMatches.join(", ")})`;
+    }
+
+    // Push to correct bucket
+    if (colorClass === "tumour-green") {
+      greenTumours.push(p);
+    } else if (colorClass === "tumour-blue") {
+      blueTumours.push(p);
+    } else if (colorClass === "tumour-purple") {
+      purpleTumours.push(p);
+    }
+  });
+
+  // Append in desired order
+  [...greenTumours, ...blueTumours, ...purpleTumours].forEach(el => outputDiv.appendChild(el));
+}
+
+// -------------------- INIT --------------------
+populateLocations();
+populateFeatures();
+
+</script>
+</body>
+</html>
