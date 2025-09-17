@@ -75,7 +75,7 @@
 
 <script>
 // -------------------- SAMPLE DATA --------------------
-// Replace this array with your full JSON
+// Insert full JSON
 const tumours = [
   {
     "location": "Abdominal Cavity or Pelvis (Including Mesentery/Omentum)",
@@ -859,7 +859,7 @@ const tumours = [
   },
   {
     "location": "",
-    "name": "biphasic sinonasal sarcoma",
+    "name": "Biphasic sinonasal sarcoma",
     "ageRanges": [],
     "features": ["MSC arranged in herringbone"]
   },
@@ -1091,7 +1091,7 @@ if (ignoreAgeLocation || (anyAge && location === "any")) {
       <span class="tumour-green">Green = matches location and age</span>; 
       <span class="tumour-blue">Blue = matches location but doesn't have an age predilection for this age range according to ExpertPath</span>; 
       <span class="tumour-purple">Purple = matches age but doesn't have a location predilection for this location according to ExpertPath</span>;
-      <span class="tumour-orange">Orange = Doesn't have a Age/Location predilection as per ExpertPath but there is a hitologic feature match</span>`;
+      <span class="tumour-orange">Orange = Doesn't have a Age/Location predilection as per ExpertPath but there is a histologic feature match</span>`;
   }
 }
 
@@ -1259,3 +1259,4 @@ locationSelect.addEventListener("change", () => {
 </script>
 </body>
 </html>
+
